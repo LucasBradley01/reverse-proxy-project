@@ -16,6 +16,12 @@ app.use(function(req, res, next) {
 // Initialze REST API
 app.get('/', (req, res) => res.status(200).sendFile(path.join(__dirname, '/html/index.html')));
 app.get('/favicon.ico', (req, res) => res.status(200).sendFile(path.join(__dirname, '/html/favicon.ico')));
+app.get('/fp', (req, res) => res.status(200).sendFile(path.join(__dirname, '/html/fp.html')));
+app.get('/fp2', (req, res) => res.status(200).sendFile(path.join(__dirname, '/html/fp2.html')));
+app.get('/iframe', (req, res) => res.status(200).sendFile(path.join(__dirname, '/html/iframe.html')));
+app.get('/redirect', (req, res) => res.status(200).sendFile(path.join(__dirname, '/html/redirect.html')));
+app.get('/vpn', (req, res) => res.status(200).sendFile(path.join(__dirname, '/html/vpn.html')));
+
 app.get('/agent', async (req, res) => {
 
     // We want to get a fresh version of the agent if it is older than 1 minute
@@ -42,6 +48,14 @@ app.get('/agent', async (req, res) => {
 
     res.status(200).sendFile(path.join(__dirname, '/scripts/agent.js'));  
 });
+
+app.post('/webhook', async (req, res) => {
+    
+
+});
+
+
+
 
 const port = process.env.PORT || 3000;
 app.listen(port, (err) => {

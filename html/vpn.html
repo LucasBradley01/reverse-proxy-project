@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>VPN Test</title>
+  </head>
+  <style>
+
+    .location-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .vpn-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+    }   
+
+    .item {
+        text-align: left;
+        border: 1px solid black;
+        padding: 10px
+    }
+
+  </style>
+  <body>
+    <div class="location-grid">
+        <div class="item"></div>
+        <div class="item">Latitude</div>
+        <div class="item">Longitude</div>  
+        <div class="item">Timezone</div>
+        
+        <div class="item">
+            <button onclick="fingerprint()">IP Location</button>
+        </div>
+        <div class="item" id="fplat"></div>  
+        <div class="item" id="fplon"></div>
+        <div class="item" id="fptmz"></div>
+        
+        <div class="item">
+            <button onclick="geolocate()">Geolocate</button>
+        </div>
+        <div class="item" id="geolat"></div>  
+        <div class="item" id="geolon"></div>
+        <div class="item" id="geotmz"></div>
+
+        <div class="item">
+            <button onclick="timezone()">System Timezone</button>
+        </div>
+        <div class="item"></div>  
+        <div class="item"></div>
+        <div class="item" id="intltmz"></div>
+    </div>
+    <br>
+    <div class="vpn-grid">
+        <div class="item"></div>
+        <div class="item">Result</div>
+        <div class="item">VPN Detected</div>
+        
+        <div class="item">
+            <button onclick="tmzcheck()">Naive Timezone Check</button>
+        </div>  
+        <div class="item" id="tmzresult"></div>
+        <div class="item" id="tmzvpn"></div>
+
+        <div class="item">
+            <button onclick="geocheck()">Geo Distance Check</button>
+        </div>  
+        <div class="item" id="georesult"></div>
+        <div class="item" id="geovpn"></div>
+    </div>
+    
+	<script>
+
+        let state = {
+            fplat: undefined,
+            fplon: undefined,
+            fptmz: undefined,
+            geolat: undefined,
+            geolon: undefined,
+            intltmz: undefined
+        }
+        
+        async function load() {
+            const FingerprintJS = await import('https://fpjscdn.net/v3/9LPPFowgE7CqfuxXzBNq');
+            return FingerprintJS.load({ endpoint: 'https://fpjs.lbradley.net' });
+        }
+
+        function fingerprint() {
+            return new Promise(async (resolve, reject) => {
+                const fp = await fpPromise;
+                const fpResult = await fp.get({ extendedResult: true });
+                console.log(fpResult);
+
+                state.fplat = fpResult.ipLocation.latitude;
+                state.fplon = fpResult.ipLocation.longitude;
+                state.fptmz = fpResult.ipLocation.timezone;
+
+                document.getElementById('fplat').innerHTML = state.fplat;
+                document.getElementById('fplon').innerHTML = state.fplon;
+                document.getElementById('fptmz').innerHTML = state.fptmz;
+
+                resolve();
+
+                // fpResult.ip and it's related information basically the same as below
+                //
+                // const whoResult = await fetch('https://ipwho.is/' + fpResult.ip, {
+                //     method: 'GET',
+                //     redirect: 'follow'
+                // });
+                // const whoJson = await whoResult.json();
+                // console.log(whoJson);
+                // document.getElementById('who').innerText = whoJson.ip + ' ' + whoJson.timezone.id;
+            });
+        }
+
+        function geolocate() {
+            return new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    
+                    state.geolat = position.coords.latitude;
+                    state.geolon = position.coords.longitude;
+
+                    document.getElementById('geolat').innerHTML = state.geolat;
+                    document.getElementById('geolon').innerHTML = state.geolon;
+
+                    resolve();
+
+                    // Reverse geo lookup is unnecessary because we determine VPN by coords
+                    //
+                    // const geoResult = await fetch('https://api.geoapify.com/v1/geocode/reverse?lat=' + position.coords.latitude + '&lon=' + position.coords.longitude + '&apiKey=[redacted]', {
+                    //     method: 'GET',
+                    //     redirect: 'follow'
+                    // });
+                    // const geoJson = await geoResult.json();
+                    // console.log(geoJson);
+                    //document.getElementById('geotmz').innerHTML = geoJson.features[0].properties.timezone.name;
+                });
+            });
+        }
+
+        function timezone() {            
+            return new Promise((resolve, reject) => {
+                state.intltmz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                document.getElementById("intltmz").innerHTML = state.intltmz;
+
+                resolve();
+
+                // let date = new Date();
+                // let offset = date.getTimezoneOffset();
+            });
+        }
+
+        async function tmzcheck() {
+            await fingerprintPromise;
+            await timezonePromise;
+            
+            const tmzmatch = state.fptmz === state.intltmz;
+
+            if (tmzmatch) {
+                document.getElementById("tmzresult").innerHTML = state.fptmz + ' = ' + state.intltmz;
+            }
+            else {
+                document.getElementById("tmzresult").innerHTML = state.fptmz + ' != ' + state.intltmz;
+            }
+
+            document.getElementById("tmzvpn").innerHTML = !tmzmatch;
+        }
+
+        async function geocheck() {
+            await fingerprintPromise;
+            await geolocatePromise;
+            
+            const latdiff = state.fplat - state.geolat;
+            const londiff = state.fplon - state.geolon;
+            const geodist = Math.sqrt((latdiff * latdiff) + (londiff * londiff));
+            const threshold = 1;
+
+            document.getElementById("georesult").innerHTML = geodist;
+            document.getElementById("geovpn").innerHTML = geodist > threshold;
+        }
+
+        const fpPromise = load();
+        const fingerprintPromise = fingerprint();
+        const geolocatePromise = geolocate();
+        const timezonePromise = timezone();
+        tmzcheck();
+        geocheck();
+    </script>
+  </body>
+</html>
